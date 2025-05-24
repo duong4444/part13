@@ -1,6 +1,6 @@
 // handling routes
 const router = require("express").Router();
-
+const { Op } = require("sequelize");
 const { Blog } = require("../models");
 const { SECRET } = require("../util/config");
 const { User } = require("../models");
@@ -22,8 +22,31 @@ const tokenExtractor = (req, res, next) => {
   next();
 };
 
+// Implement filtering by keyword in the application for the route returning
+// all blogs. The filtering should work as follows
+// GET /api/blogs?search=react returns all blogs with the search word react
+// in the title field, the search word is case-insensitive
+// GET /api/blogs returns all blogs
+
+// Expand the filter to search for a keyword in either the title or author fields
+// GET /api/blogs?search=jami returns blogs with the search word jami
+// in the title field or in the author field
 router.get("/", async (req, res) => {
-  const blogs = await Blog.findAll();
+  const where = {};
+  if (req.query.search) {
+    where[Op.or] = [
+      { title: { [Op.iLike]: `%${req.query.search}%` } },
+      { author: { [Op.iLike]: `%${req.query.search}%` } },
+    ];
+  }
+  const blogs = await Blog.findAll({
+    attributes: { exclude: ["userId"] },
+    include: {
+      model: User,
+      attributes: ["name"],
+    },
+    where,
+  });
   console.log(JSON.stringify(blogs, null, 2));
   res.json(blogs);
 });
@@ -50,7 +73,7 @@ const blogFinder = async (req, res, next) => {
 router.get("/:id", blogFinder, async (req, res) => {
   if (req.blog) {
     console.log(req.blog);
-    
+
     res.json(req.blog);
   } else {
     res.status(404).end();
@@ -62,7 +85,9 @@ router.delete("/:id", blogFinder, tokenExtractor, async (req, res) => {
     return res.status(404).json({ error: "invalid blog id" });
   }
   if (req.blog.userId !== req.decodedToken.id) {
-    return res.status(403).json({ error: "only blog owner can delete this blog" });
+    return res
+      .status(403)
+      .json({ error: "only blog owner can delete this blog" });
   }
   await req.blog.destroy();
   res.status(200).json({ message: "delete successful" });
