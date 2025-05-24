@@ -49,17 +49,23 @@ const blogFinder = async (req, res, next) => {
 
 router.get("/:id", blogFinder, async (req, res) => {
   if (req.blog) {
+    console.log(req.blog);
+    
     res.json(req.blog);
   } else {
     res.status(404).end();
   }
 });
 
-router.delete("/:id", blogFinder, async (req, res) => {
-  if (req.blog) {
-    await req.blog.destroy();
+router.delete("/:id", blogFinder, tokenExtractor, async (req, res) => {
+  if (!req.blog) {
+    return res.status(404).json({ error: "invalid blog id" });
   }
-  res.status(204).end();
+  if (req.blog.userId !== req.decodedToken.id) {
+    return res.status(403).json({ error: "only blog owner can delete this blog" });
+  }
+  await req.blog.destroy();
+  res.status(200).json({ message: "delete successful" });
 });
 
 router.put("/:id", blogFinder, async (req, res) => {
