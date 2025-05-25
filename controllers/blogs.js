@@ -22,15 +22,6 @@ const tokenExtractor = (req, res, next) => {
   next();
 };
 
-// Implement filtering by keyword in the application for the route returning
-// all blogs. The filtering should work as follows
-// GET /api/blogs?search=react returns all blogs with the search word react
-// in the title field, the search word is case-insensitive
-// GET /api/blogs returns all blogs
-
-// Expand the filter to search for a keyword in either the title or author fields
-// GET /api/blogs?search=jami returns blogs with the search word jami
-// in the title field or in the author field
 router.get("/", async (req, res) => {
   const where = {};
   if (req.query.search) {
@@ -39,8 +30,13 @@ router.get("/", async (req, res) => {
       { author: { [Op.iLike]: `%${req.query.search}%` } },
     ];
   }
+  // where[Op.or] = [conditions] <=> const where = {
+  //     [Op.or]: [conditions]
+  // }
+
   const blogs = await Blog.findAll({
     attributes: { exclude: ["userId"] },
+    order: [['likes', 'DESC']],
     include: {
       model: User,
       attributes: ["name"],
@@ -104,3 +100,6 @@ router.put("/:id", blogFinder, async (req, res) => {
 });
 
 module.exports = router;
+
+//tạo route /api/authors return tổng số blog của mỗi author và tổng số likes
+// 

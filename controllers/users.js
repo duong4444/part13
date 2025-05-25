@@ -7,6 +7,7 @@ router.get("/", async (req, res) => {
       model: Blog,
       attributes: { exclude: ["userId"] },
     },
+    order: [['id', 'ASC']],
   });
   res.json(users);
 });
